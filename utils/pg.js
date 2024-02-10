@@ -1,5 +1,6 @@
 require('dotenv').config()
 const { Pool } = require('pg')
+const format = require('pg-format')
 const config = {
   host: process.env.PG_HOST,
   database: process.env.PG_DB,
@@ -11,18 +12,20 @@ const config = {
 
 const pool = new Pool(config)
 
-const genericQuery = (query, values) => pool
-  .query(query, values)
-  .then(({rows}) => rows)
-  .catch(({code, message}) => ({code, message}))
-
-const getAll = async ({ limits = 5, order_by = "id_ASC", page = 1}) => {
-  const [campo, direccion] = order_by.split("_")
-  const offset = (page - 1) * limits
-  return await genericQuery('SELECT * FROM inventario order by $1 $2 LIMIT $3 OFFSET $4;', [campo, direccion, limits, offset])
+const genericQuery = (query, values) => {
+  return pool
+    .query(query, values)
+    .then(({ rows }) => rows)
+    .catch(({ code, message }) => ({ code, message }))
 }
-const getById = async (id) => await genericQuery('SELECT * FROM inventario WHERE id = $1;', [id])
-const getByFilters = async ({ precio_min, precio_max, categoria, metal }) => {
+const getJoyas = async ({ limits = 6, order_by = "id_ASC", page = 1 }) => {
+  const [colum, direction] = order_by.split("_")
+  const offset = (page - 1) * limits
+  formatQuery = format("SELECT * FROM inventario ORDER BY %s %s LIMIT %s OFFSET %s", colum, direction, limits, offset)
+  return await genericQuery(formatQuery)
+}
+const getJoyasById = async (id) => await genericQuery('SELECT * FROM inventario WHERE id = $1;', [id])
+const getJoyasByFilters = async ({ precio_min, precio_max, categoria, metal }) => {
   let filters = []
   let values = []
   let query = "SELECT * FROM inventario"
@@ -43,7 +46,7 @@ const getByFilters = async ({ precio_min, precio_max, categoria, metal }) => {
 }
 
 module.exports = {
-    getAll,
-    getById,
-    getByFilters
+  getJoyas,
+  getJoyasById,
+  getJoyasByFilters
 }
